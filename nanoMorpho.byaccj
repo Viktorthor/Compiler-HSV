@@ -1,0 +1,441 @@
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *         Högni Freyr Gunnarsson, Son Van Nguyen, Viktor Þór Freysson     *
+ * 							hfg7@hi.is          svn5@hi.is          vthf1@hi.is        *
+ *                         Homework 4                                      *                                                            *
+ *                                                                         *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+%{
+	import java.io.*;
+	import java.util.*;
+%}
+
+%token <sval> LITERAL,NAME,OP1,OP2,OP3,OP4,OP5,OP6,OP7,AND,OR
+%token VAR,IF,ELSIF,ELSE,WHILE,RETURN,OPNAME
+%type <obj> program, function, exprs, exp, binopexp, smallexp, commasepExp, elseiforelse, elseifsent, elsesent, orexp, andexp, notexp
+%type <ival> argsfun
+%type <sval> op
+%right RETURN '='
+%left OP1
+%right OP2
+%left OP3
+%left OP4
+%left OP5
+%left OP6
+%left OP7
+%left UNOP
+%left AND
+%left OR
+
+%%
+
+start
+	: program { generateProgram(name, ((Vector<Object>)($1)).toArray()); }
+	;
+
+/* Vector in case of multiple functions, adds functions there to be returned later /*
+/* In case of single function, return */
+program
+	:  program function 	{ ((Vector<Object>)($1)).add($2); $$=$1; }
+	|  function { $$=new Vector<Object>(); ((Vector<Object>)($$)).add($1); }
+	;
+
+/* The amount of variables and table count as $1 each */
+function
+	:
+		{
+			varAmount = 0;
+			varTable = new HashMap<String,Integer>();
+		}
+		NAME '(' argsfun ')'
+		'{'
+			variables
+			exprs
+		'}' { $$ = new Object[]{$2, $4, varAmount, ((Vector<Object>)($8)).toArray()}; }
+	;
+
+/* Holds onto and counts the amount of arguments */
+argsfun
+	: /* empty */ 			{ $$ = 0; }
+	| argsfun ',' NAME 	{ addVar($3); $$ = $1 + 1; }
+	| NAME					{ addVar($1); $$ = 1; }
+	;
+
+/* Counts the number of variables we have */
+variables
+	: /* empty */
+	| VAR argsfun ';'
+	;
+
+/* ?? */
+exprs
+	: exprs  exp ';'	 		{ ((Vector<Object>)($1)).add($2); $$=$1; }
+	| exp ';'					  { $$ = new Vector<Object>(); ((Vector<Object>)($$)).add($1); }
+	;
+
+/* Expressions, similar to JFlex file */
+exp
+  : RETURN exp				{ $$ = new Object[]{EXPRESSION_RETURN, $2}; }
+  | NAME '=' exp			{ $$ = new Object[]{EXPRESSION_STORE, findVar($1), $3}; }
+  | orexp     				{ $$ = $1; }
+  ;
+
+/* If we have one (or more) "AND" exp with "OR" token in between */
+orexp
+  : andexp  OR orexp  { $$ = new Object[]{EXPRESSION_CALL, $2, new Object[]{$1,$3}}; }
+  | andexp            { $$ = $1; }
+  ;
+
+/* If we have one (or more) "NOT" exp with "AND" token in between */
+andexp
+  : notexp  AND andexp  { $$ = new Object[]{EXPRESSION_CALL, $2, new Object[]{$1,$3}}; }
+  | notexp              { $$ = $1; }
+  ;
+
+/* If we have a binary operation expression with/without a "!" prefix */
+notexp
+  : '!' notexp   { $$ = new Object[]{EXPRESSION_CALL, "!", new Object[]{$2} }; }
+  | binopexp     { $$ = $1; }
+
+/* 8 levels of priority for binary operations */
+binopexp
+	: binopexp OP1 binopexp	{ $$ = new Object[]{EXPRESSION_CALL, $2 ,new Object[]{$1, $3}};}
+	| binopexp OP2 binopexp	{ $$ = new Object[]{EXPRESSION_CALL, $2 ,new Object[]{$1, $3}};}
+	| binopexp OP3 binopexp	{ $$ = new Object[]{EXPRESSION_CALL, $2 ,new Object[]{$1, $3}};}
+	| binopexp OP4 binopexp	{ $$ = new Object[]{EXPRESSION_CALL, $2 ,new Object[]{$1, $3}};}
+	| binopexp OP5 binopexp	{ $$ = new Object[]{EXPRESSION_CALL, $2 ,new Object[]{$1, $3}};}
+	| binopexp OP6 binopexp	{ $$ = new Object[]{EXPRESSION_CALL, $2 ,new Object[]{$1, $3}};}
+	| binopexp OP7 smallexp	{ $$ = new Object[]{EXPRESSION_CALL, $2 ,new Object[]{$1, $3}};}
+	| smallexp					    { $$ = $1; }
+	;
+
+////////////////////////////////////////////////////////
+
+
+smallexp
+	: NAME '(' commasepExp ')' { $$ = new Object[]{EXPRESSION_CALL, $1, ((Vector<Object>)($3)).toArray()}; }
+	| NAME 						{ $$ = new Object[]{EXPRESSION_FETCH, findVar($1)}; }
+	| LITERAL					{ $$ = new Object[]{EXPRESSION_LITERAL, $1}; }
+	| '(' exp ')'				{ $$ = $2; }
+	| WHILE '(' exp ')'
+	  '{'
+		  exprs
+	  '}' 						{ $$ = new Object[]{EXPRESSION_WHILE, $3, new Object[]{EXPRESSION_BODY, ((Vector<Object>)($6)).toArray()}}; }
+	| IF '(' exp ')'
+	  '{'
+	  	 exprs
+	  '}'
+	  elseiforelse				{ $$ = new Object[]{EXPRESSION_IF, $3, new Object[]{EXPRESSION_BODY, ((Vector<Object>)($6)).toArray()}, $8}; }
+  | op smallexp %prec UNOP   { $$ = new Object[]{EXPRESSION_CALL, $1 , new Object[]{$2}}; }
+	;
+
+elseiforelse
+	: /* empty */				{ $$ = null; }
+	| elseifsent				{ $$ = $1; }
+	| elsesent					{ $$ = $1; }
+	;
+
+elseifsent
+	: ELSIF '(' exp ')'
+	  '{'
+		 exprs
+	  '}'
+	  elseifsent 				{ $$ = new Object[]{EXPRESSION_IF, $3, new Object[]{EXPRESSION_BODY, ((Vector<Object>)($6)).toArray()}, $8}; }
+	| ELSIF '(' exp ')'
+	  '{'
+		 exprs
+	  '}'
+	  elsesent 					{ $$ = new Object[]{EXPRESSION_IF, $3, new Object[]{EXPRESSION_BODY, ((Vector<Object>)($6)).toArray()}, $8}; }
+	| ELSIF '(' exp ')'
+	  '{'
+		 exprs
+	  '}'						{ $$ = new Object[]{EXPRESSION_IF, $3, new Object[]{EXPRESSION_BODY, ((Vector<Object>)($6)).toArray()}, null}; }
+	;
+
+elsesent
+	: ELSE
+	  '{'
+         exprs
+	  '}'						{ $$ = new Object[]{EXPRESSION_IF, new Object[]{EXPRESSION_LITERAL, "true"}, new Object[]{EXPRESSION_BODY, ((Vector<Object>)($3)).toArray()}, null};}
+	;
+
+commasepExp
+	: /* empty */ 				    { $$ = new Vector<Object>(); }
+	| commasepExp ',' exp		{ ((Vector<Object>)($1)).add($3); $$=$1; }
+	| exp						        { $$ = new Vector<Object>(); ((Vector<Object>)($$)).add($1); }
+	;
+
+op	:	OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 ;
+
+%%
+
+private NanoMorphoLexer lexer;
+private static int varAmount;
+private static HashMap<String,Integer> varTable;
+static private String name;
+int last_token_read;
+
+private void addVar( String name )
+{
+	if( varTable.get(name) != null )
+	{
+		yyerror("Variable "+name+" already exists");
+	}
+	varTable.put(name,varAmount++);
+}
+
+private int findVar( String name )
+{
+	Integer res = varTable.get(name);
+	if( res == null )
+	{
+		yyerror("Variable "+name+" does not exist");
+	}
+	return res;
+}
+
+private int yylex()
+{
+	int yyl_return = -1;
+	try
+	{
+		yylval = null;
+		last_token_read = yyl_return = lexer.yylex();
+		if( yylval==null )
+			yylval = new NanoMorphoParserVal(NanoMorphoParser.yyname[yyl_return]);
+	}
+	catch (IOException e)
+	{
+		System.err.println("IO error: "+e);
+	}
+	return yyl_return;
+}
+
+public void yyerror( String error )
+{
+	System.err.println("Error: "+error);
+	System.exit(1);
+}
+
+public NanoMorphoParser(Reader r)
+{
+	lexer = new NanoMorphoLexer(r, this);
+}
+
+public static void main( String args[] ) throws IOException
+{
+	NanoMorphoParser yyparser = new NanoMorphoParser(new FileReader(args[0]));
+	name = args[0].substring(0,args[0].lastIndexOf('.'));
+	yyparser.yyparse();
+}
+
+
+/*--------------------------------------------------------------
+  ------------------- PROGRAM GENERATOR HERE--------------------
+  --------------------------------------------------------------*/
+
+   // Constants that represent the assembler functions to call.
+    public final static String EXPRESSION_RETURN = "RETURN";
+    public final static String EXPRESSION_STORE = "STORE";
+    public final static String EXPRESSION_CALL = "CALL";
+    public final static String EXPRESSION_FETCH = "FETCH";
+    public final static String EXPRESSION_LITERAL = "LITERAL";
+    public final static String EXPRESSION_IF = "IF";
+    public final static String EXPRESSION_WHILE = "WHILE";
+    public final static String EXPRESSION_BODY = "BODY";
+
+    private static int nextLabel = 1;
+
+
+	private static void emit(String line )
+	{
+		System.out.println(line);
+    }
+
+	public static int newLabel()
+	{
+		return nextLabel++;
+    }
+
+    public void generateProgram(String filename, Object[] funs)
+    {
+        System.out.println("\""+filename+".mexe\" = main in");
+        System.out.println("!");
+        System.out.println("{{");
+        for(int i = 0; i < funs.length; i++)
+        {
+			generateFunction((Object[])funs[i]);
+        }
+        System.out.println("}}");
+        System.out.println("*");
+        System.out.println("BASIS;");
+    }
+
+    public void generateFunction(Object[] f)
+    {
+        String fname = (String)f[0];
+        int argCount = (Integer)f[1];
+        int varAmount = (Integer)f[2];
+
+        emit("#\""+fname+"[f"+argCount+"]\" =");
+        emit("[");
+
+        if(varAmount > 0 )
+        {
+            emit("(MakeVal null)");
+            for(int i = 0; i < varAmount; i++)
+            {
+                emit("(Push)");
+            }
+        }
+
+        for (Object exp : (Object[])f[3])
+        {
+           generateExpr((Object[])exp);
+        }
+        emit("(Return)");
+      	emit("];");
+    }
+
+    public void generateExpr(Object[] exp)
+    {
+           switch ((String)((Object[])exp)[0])
+           {
+              case EXPRESSION_RETURN:
+                //["RETURN",exp]
+                generateExprP((Object[])((Object[])exp)[1]);
+                emit("(Return)");
+                break;
+              case EXPRESSION_CALL:
+                //["CALL",name,args]
+                Object[] args = (Object[])((Object[])exp)[2];
+                int i;
+                for(i=0; i != args.length; i++)
+                {
+                    /*
+                       Need to remember that when calling something the order should be
+                       0: generateExpr
+                       1: push
+                          generateExpr
+                       2: push
+                          generateExpr
+                          ..
+                          ..
+                     */
+                    if(i==0)
+                    {
+                        generateExpr((Object[])args[i]);
+                    }
+                    else
+                    {
+                        generateExprP((Object[])args[i]);
+                    }
+                }
+                emit("(Call #\""+(String)((Object[])exp)[1]+"[f"+i+"]\" "+i+")");
+                break;
+              case EXPRESSION_FETCH:
+                //["FETCH",pos]
+                emit("(Fetch "+(int)((Object[])exp)[1]+")");
+                break;
+              case EXPRESSION_LITERAL:
+                //["LITERAL",string]
+                emit("(MakeVal "+(String)((Object[])exp)[1]+")");
+                break;
+              case EXPRESSION_IF:
+                //["IF",exp,exp,exp]
+                //      con  then  else
+                int labElse = newLabel();
+                int labEnd = newLabel();
+                generateJump(((Object[])(((Object[])exp)[1])),0,labElse);
+                generateExpr(((Object[])(((Object[])exp)[2])));
+                emit("(Go _"+labEnd+")");
+                emit("_"+labElse+":");
+
+                /*
+                  because the way our code is generated in nanomorpho.jflex
+                  there will be a case where the 3rd value will be null.
+                */
+                if(((Object[])(((Object[])exp)[3])) != null)
+                {
+                    generateExpr(((Object[])(((Object[])exp)[3])));
+                }
+                emit("_"+labEnd+":");
+                break;
+              case EXPRESSION_WHILE:
+                //["WHILE",exp,exp]
+                int labTrue = newLabel();
+                int labFalse = newLabel();
+                emit("_"+labTrue+":");
+                generateJump(((Object[])(((Object[])exp)[1])),0,labFalse);
+                generateExpr(((Object[])(((Object[])exp)[2])));
+                emit("(Go _"+labTrue+")");
+                emit("_"+labFalse+":");
+                break;
+              case EXPRESSION_STORE:
+                //["STORE",pos,exp]
+                generateExpr((Object[])((Object[])exp)[2]);
+                emit("(Store "+(int)((Object[])exp)[1]+")");
+                break;
+              case EXPRESSION_BODY:
+                //["BODY",exprs]
+                for (Object b_expr : (Object[])exp[1])
+                {
+                    generateExpr((Object[])b_expr);
+                }
+                break;
+              default:
+                throw new Error("Unknown intermediate code type: \""+(String)((Object[])exp)[0]+"\"");
+           }
+    }
+
+    public void generateExprP(Object[] exp)
+    {
+        switch ((String)((Object[])exp)[0])
+        {
+            case EXPRESSION_CALL:
+                Object[] args = (Object[])((Object[])exp)[2];
+                int i;
+                for(i=0; i != args.length; i++)
+                {
+                    generateExprP((Object[])args[i]);
+                }
+                if( i==0 )
+                {
+                    emit("(Push)");
+                }
+                emit("(Call #\""+(String)((Object[])exp)[1]+"[f"+i+"]\" "+i+")");
+                break;
+            case EXPRESSION_FETCH:
+                //["FETCH",pos]
+                emit("(FetchP "+(int)((Object[])exp)[1]+")");
+                break;
+            case EXPRESSION_LITERAL:
+                //["LITERAL",string]
+                emit("(MakeValP "+(String)((Object[])exp)[1]+")");
+                break;
+            default:
+                throw new Error("Unknown intermediate code type: \""+(String)((Object[])exp)[0]+"\"");
+		}
+    }
+
+    public void generateJump(Object[] exr, int labelTrue, int labelFalse )
+	{
+		switch((String)exr[0])
+		{
+            case EXPRESSION_LITERAL:
+                 //["LITERAL",string]
+                String literal = (String)exr[1];
+                if(literal.equals("false") || literal.equals("null"))
+                {
+                    if( labelFalse!=0 ) emit("(Go _"+labelFalse+")");
+                    return;
+                }
+                if( labelTrue!=0 ) emit("(Go _"+labelTrue+")");
+                return;
+        default:
+			generateExpr(exr);
+			if( labelTrue!=0 ) emit("(GoTrue _"+labelTrue+")");
+			if( labelFalse!=0 ) emit("(GoFalse _"+labelFalse+")");
+		}
+	}
