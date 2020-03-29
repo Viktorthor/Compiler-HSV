@@ -107,11 +107,9 @@ binopexp
 	| binopexp OP5 binopexp	{ $$ = new Object[]{EXPRESSION_CALL, $2 ,new Object[]{$1, $3}};}
 	| binopexp OP6 binopexp	{ $$ = new Object[]{EXPRESSION_CALL, $2 ,new Object[]{$1, $3}};}
 	| binopexp OP7 smallexp	{ $$ = new Object[]{EXPRESSION_CALL, $2 ,new Object[]{$1, $3}};}
+	| op smallexp %prec UNOP{ $$ = new Object[]{EXPRESSION_CALL, $1 , new Object[]{$2}}; }
 	| smallexp					    { $$ = $1; }
 	;
-
-////////////////////////////////////////////////////////
-
 
 smallexp
 	: NAME '(' commasepExp ')' { $$ = new Object[]{EXPRESSION_CALL, $1, ((Vector<Object>)($3)).toArray()}; }
@@ -127,7 +125,6 @@ smallexp
 	  	 exprs
 	  '}'
 	  elseiforelse				{ $$ = new Object[]{EXPRESSION_IF, $3, new Object[]{EXPRESSION_BODY, ((Vector<Object>)($6)).toArray()}, $8}; }
-  | op smallexp %prec UNOP   { $$ = new Object[]{EXPRESSION_CALL, $1 , new Object[]{$2}}; }
 	;
 
 elseiforelse
@@ -303,26 +300,14 @@ public static void main( String args[] ) throws IOException
            switch ((String)((Object[])exp)[0])
            {
               case EXPRESSION_RETURN:
-                //["RETURN",exp]
                 generateExprP((Object[])((Object[])exp)[1]);
                 emit("(Return)");
                 break;
               case EXPRESSION_CALL:
-                //["CALL",name,args]
                 Object[] args = (Object[])((Object[])exp)[2];
                 int i;
                 for(i=0; i != args.length; i++)
                 {
-                    /*
-                       Need to remember that when calling something the order should be
-                       0: generateExpr
-                       1: push
-                          generateExpr
-                       2: push
-                          generateExpr
-                          ..
-                          ..
-                     */
                     if(i==0)
                     {
                         generateExpr((Object[])args[i]);
@@ -335,16 +320,12 @@ public static void main( String args[] ) throws IOException
                 emit("(Call #\""+(String)((Object[])exp)[1]+"[f"+i+"]\" "+i+")");
                 break;
               case EXPRESSION_FETCH:
-                //["FETCH",pos]
                 emit("(Fetch "+(int)((Object[])exp)[1]+")");
                 break;
               case EXPRESSION_LITERAL:
-                //["LITERAL",string]
                 emit("(MakeVal "+(String)((Object[])exp)[1]+")");
                 break;
               case EXPRESSION_IF:
-                //["IF",exp,exp,exp]
-                //      con  then  else
                 int labElse = newLabel();
                 int labEnd = newLabel();
                 generateJump(((Object[])(((Object[])exp)[1])),0,labElse);
@@ -352,10 +333,6 @@ public static void main( String args[] ) throws IOException
                 emit("(Go _"+labEnd+")");
                 emit("_"+labElse+":");
 
-                /*
-                  because the way our code is generated in nanomorpho.jflex
-                  there will be a case where the 3rd value will be null.
-                */
                 if(((Object[])(((Object[])exp)[3])) != null)
                 {
                     generateExpr(((Object[])(((Object[])exp)[3])));
@@ -363,7 +340,6 @@ public static void main( String args[] ) throws IOException
                 emit("_"+labEnd+":");
                 break;
               case EXPRESSION_WHILE:
-                //["WHILE",exp,exp]
                 int labTrue = newLabel();
                 int labFalse = newLabel();
                 emit("_"+labTrue+":");
@@ -373,12 +349,10 @@ public static void main( String args[] ) throws IOException
                 emit("_"+labFalse+":");
                 break;
               case EXPRESSION_STORE:
-                //["STORE",pos,exp]
                 generateExpr((Object[])((Object[])exp)[2]);
                 emit("(Store "+(int)((Object[])exp)[1]+")");
                 break;
               case EXPRESSION_BODY:
-                //["BODY",exprs]
                 for (Object b_expr : (Object[])exp[1])
                 {
                     generateExpr((Object[])b_expr);
@@ -407,11 +381,9 @@ public static void main( String args[] ) throws IOException
                 emit("(Call #\""+(String)((Object[])exp)[1]+"[f"+i+"]\" "+i+")");
                 break;
             case EXPRESSION_FETCH:
-                //["FETCH",pos]
                 emit("(FetchP "+(int)((Object[])exp)[1]+")");
                 break;
             case EXPRESSION_LITERAL:
-                //["LITERAL",string]
                 emit("(MakeValP "+(String)((Object[])exp)[1]+")");
                 break;
             default:
@@ -424,7 +396,6 @@ public static void main( String args[] ) throws IOException
 		switch((String)exr[0])
 		{
             case EXPRESSION_LITERAL:
-                 //["LITERAL",string]
                 String literal = (String)exr[1];
                 if(literal.equals("false") || literal.equals("null"))
                 {
