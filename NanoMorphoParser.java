@@ -572,26 +572,14 @@ public static void main( String args[] ) throws IOException
            switch ((String)((Object[])exp)[0])
            {
               case EXPRESSION_RETURN:
-                //["RETURN",exp]
                 generateExprP((Object[])((Object[])exp)[1]);
                 emit("(Return)");
                 break;
               case EXPRESSION_CALL:
-                //["CALL",name,args]
                 Object[] args = (Object[])((Object[])exp)[2];
                 int i;
                 for(i=0; i != args.length; i++)
                 {
-                    /*
-                       Need to remember that when calling something the order should be
-                       0: generateExpr
-                       1: push
-                          generateExpr
-                       2: push
-                          generateExpr
-                          ..
-                          ..
-                     */
                     if(i==0)
                     {
                         generateExpr((Object[])args[i]);
@@ -604,16 +592,12 @@ public static void main( String args[] ) throws IOException
                 emit("(Call #\""+(String)((Object[])exp)[1]+"[f"+i+"]\" "+i+")");
                 break;
               case EXPRESSION_FETCH:
-                //["FETCH",pos]
                 emit("(Fetch "+(int)((Object[])exp)[1]+")");
                 break;
               case EXPRESSION_LITERAL:
-                //["LITERAL",string]
                 emit("(MakeVal "+(String)((Object[])exp)[1]+")");
                 break;
               case EXPRESSION_IF:
-                //["IF",exp,exp,exp]
-                //      con  then  else
                 int labElse = newLabel();
                 int labEnd = newLabel();
                 generateJump(((Object[])(((Object[])exp)[1])),0,labElse);
@@ -621,10 +605,6 @@ public static void main( String args[] ) throws IOException
                 emit("(Go _"+labEnd+")");
                 emit("_"+labElse+":");
 
-                /*
-                  because the way our code is generated in nanomorpho.jflex
-                  there will be a case where the 3rd value will be null.
-                */
                 if(((Object[])(((Object[])exp)[3])) != null)
                 {
                     generateExpr(((Object[])(((Object[])exp)[3])));
@@ -632,7 +612,6 @@ public static void main( String args[] ) throws IOException
                 emit("_"+labEnd+":");
                 break;
               case EXPRESSION_WHILE:
-                //["WHILE",exp,exp]
                 int labTrue = newLabel();
                 int labFalse = newLabel();
                 emit("_"+labTrue+":");
@@ -642,12 +621,10 @@ public static void main( String args[] ) throws IOException
                 emit("_"+labFalse+":");
                 break;
               case EXPRESSION_STORE:
-                //["STORE",pos,exp]
                 generateExpr((Object[])((Object[])exp)[2]);
                 emit("(Store "+(int)((Object[])exp)[1]+")");
                 break;
               case EXPRESSION_BODY:
-                //["BODY",exprs]
                 for (Object b_expr : (Object[])exp[1])
                 {
                     generateExpr((Object[])b_expr);
@@ -676,11 +653,9 @@ public static void main( String args[] ) throws IOException
                 emit("(Call #\""+(String)((Object[])exp)[1]+"[f"+i+"]\" "+i+")");
                 break;
             case EXPRESSION_FETCH:
-                //["FETCH",pos]
                 emit("(FetchP "+(int)((Object[])exp)[1]+")");
                 break;
             case EXPRESSION_LITERAL:
-                //["LITERAL",string]
                 emit("(MakeValP "+(String)((Object[])exp)[1]+")");
                 break;
             default:
@@ -693,7 +668,6 @@ public static void main( String args[] ) throws IOException
 		switch((String)exr[0])
 		{
             case EXPRESSION_LITERAL:
-                 //["LITERAL",string]
                 String literal = (String)exr[1];
                 if(literal.equals("false") || literal.equals("null"))
                 {
@@ -708,7 +682,7 @@ public static void main( String args[] ) throws IOException
 			if( labelFalse!=0 ) emit("(GoFalse _"+labelFalse+")");
 		}
 	}
-//#line 640 "NanoMorphoParser.java"
+//#line 614 "NanoMorphoParser.java"
 //###############################################################
 // method: yylexdebug : check lexer state
 //###############################################################
@@ -1041,7 +1015,7 @@ case 46:
 //#line 163 "nanoMorpho.byaccj"
 { yyval.obj = new Vector<Object>(); ((Vector<Object>)(yyval.obj)).add(val_peek(0).obj); }
 break;
-//#line 968 "NanoMorphoParser.java"
+//#line 942 "NanoMorphoParser.java"
 //########## END OF USER-SUPPLIED ACTIONS ##########
     }//switch
     //#### Now let's reduce... ####
