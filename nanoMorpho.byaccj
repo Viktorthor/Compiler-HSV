@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *         Högni Freyr Gunnarsson, Son Van Nguyen, Viktor Þór Freysson     *
  * 				hfg7@hi.is          svn5@hi.is          vthf1@hi.is        *
- *                         Homework 4                                      *         
+ *                         Homework 4                                      *
  *                                                                         *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -13,7 +13,7 @@
 
 %token <sval> LITERAL,NAME,OP1,OP2,OP3,OP4,OP5,OP6,OP7,AND,OR
 %token VAR,IF,ELSIF,ELSE,WHILE,RETURN,OPNAME
-%type <obj> program, function, exprs, exp, binopexp, smallexp, commasepExp, elseiforelse, elseifsent, elsesent, orexp, andexp, notexp
+%type <obj> program, function, exprs, exp, binopexp, smallexp, commasepExp, elseiforelse, elseifsent, elsesent, notexp
 %type <ival> argsfun
 %type <sval> op
 %right RETURN '='
@@ -78,19 +78,7 @@ exprs
 exp
   : RETURN exp				{ $$ = new Object[]{EXPRESSION_RETURN, $2}; }
   | NAME '=' exp			{ $$ = new Object[]{EXPRESSION_STORE, findVar($1), $3}; }
-  | orexp     				{ $$ = $1; }
-  ;
-
-/* If we have one (or more) "AND" exp with "OR" token in between */
-orexp
-  : andexp  OR orexp  { $$ = new Object[]{EXPRESSION_CALL, $2, new Object[]{$1,$3}}; }
-  | andexp            { $$ = $1; }
-  ;
-
-/* If we have one (or more) "NOT" exp with "AND" token in between */
-andexp
-  : notexp  AND andexp  { $$ = new Object[]{EXPRESSION_CALL, $2, new Object[]{$1,$3}}; }
-  | notexp              { $$ = $1; }
+  | notexp     				{ $$ = $1; }
   ;
 
 /* If we have a binary operation expression with/without a "!" prefix */
@@ -227,12 +215,11 @@ public static void main( String args[] ) throws IOException
 	yyparser.yyparse();
 }
 
+/* ***************************** */
+/* Program generator starts here */
+/* ***************************** */
 
-/*--------------------------------------------------------------
-  ------------------- PROGRAM GENERATOR HERE--------------------
-  --------------------------------------------------------------*/
-
-   // Constants that represent the assembler functions to call.
+   // Constants that represent the assembler functions to call
     public final static String EXPRESSION_RETURN = "RETURN";
     public final static String EXPRESSION_STORE = "STORE";
     public final static String EXPRESSION_CALL = "CALL";
