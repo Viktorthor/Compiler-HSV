@@ -1,20 +1,21 @@
+/**
+	JFlex lesgreinir fyrir NanoMorpho.
+	Höfundar: Högni Freyr Gunnarsson (hfg7), Son Van Nguyen (svn5), Viktor Þór Freysson (vthf1)
+ */
+
 %%
 
 %public
-%class NanoMorphoLexer
+%class Lexer
 %byaccj
-%line
-%column
+
 %unicode
 
 %{
 
-public NanoMorphoParser yyparser;
+public Parser yyparser;
 
-public int getLine() { return yyline+1; }
-public int getColumn() { return yycolumn+1; }
-
-public NanoMorphoLexer(java.io.Reader r, NanoMorphoParser yyparser )
+public Lexer(java.io.Reader r, Parser yyparser )
 {
 	this(r);
 	this.yyparser = yyparser;
@@ -27,100 +28,88 @@ _FLOAT={_DIGIT}+\.{_DIGIT}+([eE][+-]?{_DIGIT}+)?
 _INT={_DIGIT}+
 _STRING=\"([^\"\\]|\\b|\\t|\\n|\\f|\\r|\\\"|\\\'|\\\\|(\\[0-3][0-7][0-7])|\\[0-7][0-7]|\\[0-7])*\"
 _CHAR=\'([^\'\\]|\\b|\\t|\\n|\\f|\\r|\\\"|\\\'|\\\\|(\\[0-3][0-7][0-7])|(\\[0-7][0-7])|(\\[0-7]))\'
-_DELIM=[(){},;=]
-_AND=&&
-_OR=\|\|
-_NAME=([:letter:]|\_|{_DIGIT})+
-_OPNAME=[\+\-*/!%&=><\:\^\~&|?]+
+_DELIM=[()\{\},;=]
+_NAME=([:letter:]|{_DIGIT})+
 
 %%
 
 {_DELIM} {
-	yyparser.yylval = new NanoMorphoParserVal(yytext());
+	yyparser.yylval = new ParserVal(yytext());
 	return yycharat(0);
 }
 
-{_AND} {
-    yyparser.yylval = new NanoMorphoParserVal(yytext());
-    return NanoMorphoParser.AND;
-}
-
-{_OR} {
-    yyparser.yylval = new NanoMorphoParserVal(yytext());
-    return NanoMorphoParser.OR;
-}
-
 {_STRING} | {_FLOAT} | {_CHAR} | {_INT} | null | true | false {
-	yyparser.yylval = new NanoMorphoParserVal(yytext());
-	return NanoMorphoParser.LITERAL;
+	yyparser.yylval = new ParserVal(yytext());
+	return Parser.LITERAL;
+}
+
+
+"while" {
+	return Parser.WHILE;
 }
 
 "if" {
-	return NanoMorphoParser.IF;
+	return Parser.IF;
 }
 
 "elsif" {
-	return NanoMorphoParser.ELSIF;
+	return Parser.ELSIF;
 }
 
 "else" {
-	return NanoMorphoParser.ELSE;
-}
-
-"while" {
-	return NanoMorphoParser.WHILE;
-}
-
-"return" {
-	return NanoMorphoParser.RETURN;
+	return Parser.ELSE;
 }
 
 "var" {
-	return NanoMorphoParser.VAR;
+	return Parser.VAR;
+}
+
+"return" {
+	return Parser.RETURN;
 }
 
 {_NAME} {
-	yyparser.yylval = new NanoMorphoParserVal(yytext());
-	return NanoMorphoParser.NAME;
+	yyparser.yylval = new ParserVal(yytext());
+	return Parser.NAME;
 }
 
-{_OPNAME} {
-	yyparser.yylval = new NanoMorphoParserVal(yytext());
+[\+\-*/!%&=><\:\^\~&|?]+ {
+	yyparser.yylval = new ParserVal(yytext());
 	switch( yytext().charAt(0) )
 	{
 	case '^':
 	case '?':
 	case '~':
-		return NanoMorphoParser.OP1;
+		return Parser.OP1;
 	case ':':
-		return NanoMorphoParser.OP2;
+		return Parser.OP2;
 	case '|':
-		return NanoMorphoParser.OP3;
+		return Parser.OP3;
 	case '&':
-		return NanoMorphoParser.OP4;
+		return Parser.OP4;
 	case '!':
 	case '=':
 	case '<':
 	case '>':
-		return NanoMorphoParser.OP5;
+		return Parser.OP5;
 	case '+':
 	case '-':
-		return NanoMorphoParser.OP6;
+		return Parser.OP6;
 	case '*':
 	case '/':
 	case '%':
-		return NanoMorphoParser.OP7;
+		return Parser.OP7;
 	default:
 		throw new Error("Invalid opname");
 	}
 }
 
-";;;".*$ {
+"//".*$ { // Tvö skástrik fyrir comment
 }
 
 [ \t\r\n\f] {
 }
 
 . {
-	return NanoMorphoParser.YYERRCODE;
+	return Parser.YYERRCODE;
 }

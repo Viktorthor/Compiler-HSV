@@ -1,7 +1,15 @@
-NanoMorphoParser.class NanoMorphoLexer.class NanoMorphoParserVal.class: NanoMorphoParser.java NanoMorphoParserVal.java
+simpletest:
+	./byacc -Jclass=Parser nanoMorpho.byaccj
+	java -jar jflex-full-1.7.0.jar nanoMorpho.jflex
+	javac Lexer.java Parser.java ParserVal.java
+	@echo ""
+	@echo ""
+	java Parser test.s
+
+Parser.class Lexer.class ParserVal.class: Parser.java ParserVal.java
 	@echo "-----"
 	@echo "Compiling to java"
-	javac NanoMorphoParser.java NanoMorphoLexer.java NanoMorphoParserVal.java
+	javac Parser.java Lexer.java ParserVal.java
 
 clear:
 	clear
@@ -10,20 +18,20 @@ NanoMorpho.java:
 	@echo "Result from JFlex: "
 	java -jar jflex-full-1.7.0.jar nanoMorpho.jflex
 
-NanoMorphoParser.java NanoMorphoParserVal.java: NanoMorpho.java
+Parser.java ParserVal.java: NanoMorpho.java
 	@echo "-----"
 	@echo "Result from BYACC/J"
-	./byacc -Jclass=NanoMorphoParser nanoMorpho.byaccj
+	./byacc -Jclass=Parser nanoMorpho.byaccj
 
-test: NanoMorphoParser.class NanoMorphoLexer.class NanoMorphoParserVal.class
+test: Parser.class Lexer.class ParserVal.class
 	@echo "-----"
 	@echo "Parser testing initiated"
-	java NanoMorphoParser test_success.s
+	java Parser test_success.s
 
-Generate_morpho: NanoMorphoParser.class NanoMorphoLexer.class NanoMorphoParserVal.class
+Generate_morpho: Parser.class Lexer.class ParserVal.class
 	@echo "-----"
 	@echo "Using test file to generate Morpho"
-	java NanoMorphoParser test_success.s | java -jar morpho.jar -c
+	java Parser test_success.s | java -jar morpho.jar -c
 
 Test_morpho_generated_code: Generate_morpho
 	@echo "-----"
