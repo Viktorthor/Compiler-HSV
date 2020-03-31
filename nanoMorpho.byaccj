@@ -1,7 +1,7 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *         Högni Freyr Gunnarsson, Son Van Nguyen, Viktor Þór Freysson     *
- * 							hfg7@hi.is          svn5@hi.is          vthf1@hi.is        *
- *                         Homework 4                                      *                                                            *
+ * 				hfg7@hi.is          svn5@hi.is          vthf1@hi.is        *
+ *                         Homework 4                                      *         
  *                                                                         *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -167,7 +167,7 @@ op	:	OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 ;
 
 %%
 
-private NanoMorphoLexer lexer;
+private Lexer lexer;
 private static int varAmount;
 private static HashMap<String,Integer> varTable;
 static private String name;
@@ -187,7 +187,7 @@ private int findVar( String name )
 	Integer res = varTable.get(name);
 	if( res == null )
 	{
-		yyerror("Variable "+name+" does not exist");
+		yyerror("Unidentified variable " + name);
 	}
 	return res;
 }
@@ -200,7 +200,7 @@ private int yylex()
 		yylval = null;
 		last_token_read = yyl_return = lexer.yylex();
 		if( yylval==null )
-			yylval = new NanoMorphoParserVal(NanoMorphoParser.yyname[yyl_return]);
+			yylval = new ParserVal(Parser.yyname[yyl_return]);
 	}
 	catch (IOException e)
 	{
@@ -209,20 +209,20 @@ private int yylex()
 	return yyl_return;
 }
 
-public void yyerror( String error )
+public void yyerror( String message )
 {
-	System.err.println("Error: "+error);
+	System.err.println("Error: " + message);
 	System.exit(1);
 }
 
-public NanoMorphoParser(Reader r)
+public Parser(Reader r)
 {
-	lexer = new NanoMorphoLexer(r, this);
+	lexer = new Lexer(r, this);
 }
 
 public static void main( String args[] ) throws IOException
 {
-	NanoMorphoParser yyparser = new NanoMorphoParser(new FileReader(args[0]));
+	Parser yyparser = new Parser(new FileReader(args[0]));
 	name = args[0].substring(0,args[0].lastIndexOf('.'));
 	yyparser.yyparse();
 }
@@ -257,16 +257,12 @@ public static void main( String args[] ) throws IOException
 
     public void generateProgram(String filename, Object[] funs)
     {
-        System.out.println("\""+filename+".mexe\" = main in");
-        System.out.println("!");
-        System.out.println("{{");
+		emit("\"formula.mexe\" = main in\n{{");
         for(int i = 0; i < funs.length; i++)
         {
 			generateFunction((Object[])funs[i]);
         }
-        System.out.println("}}");
-        System.out.println("*");
-        System.out.println("BASIS;");
+		emit("}}\n*BASIS;");
     }
 
     public void generateFunction(Object[] f)
