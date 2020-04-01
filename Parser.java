@@ -418,9 +418,9 @@ int last_token_read;
 
 private void addVar( String name )
 {
-	if( varTable.get(name) != null )
+	if(varTable.get(name) != null)
 	{
-		yyerror("Variable "+name+" already exists");
+		yyerror("Variable " + name + " already exists");
 	}
 	varTable.put(name,varAmount++);
 }
@@ -428,9 +428,9 @@ private void addVar( String name )
 private int findVar( String name )
 {
 	Integer res = varTable.get(name);
-	if( res == null )
+	if(res == null)
 	{
-		yyerror("Unidentified variable " + name);
+		yyerror("Variable " + name + " does not exist");
 	}
 	return res;
 }
@@ -442,7 +442,7 @@ private int yylex()
 	{
 		yylval = null;
 		last_token_read = yyl_return = lexer.yylex();
-		if( yylval==null )
+		if(yylval==null)
 			yylval = new ParserVal(Parser.yyname[yyl_return]);
 	}
 	catch (IOException e)
@@ -452,7 +452,7 @@ private int yylex()
 	return yyl_return;
 }
 
-public void yyerror( String message )
+public void yyerror(String message)
 {
 	System.err.println("Error: " + message);
 	System.exit(1);
@@ -463,7 +463,7 @@ public Parser(Reader r)
 	lexer = new Lexer(r, this);
 }
 
-public static void main( String args[] ) throws IOException
+public static void main(String args[]) throws IOException
 {
 	Parser yyparser = new Parser(new FileReader(args[0]));
 	name = args[0].substring(0,args[0].lastIndexOf('.'));
@@ -474,7 +474,7 @@ public static void main( String args[] ) throws IOException
 /* Program generator starts here */
 /* ***************************** */
 
-   // Constants that represent the assembler functions to call
+	 /* Constants that represent what corresponding assembler function to call */
     public final static String EXPRESSION_RETURN = "RETURN";
     public final static String EXPRESSION_STORE = "STORE";
     public final static String EXPRESSION_CALL = "CALL";
@@ -487,7 +487,7 @@ public static void main( String args[] ) throws IOException
     private static int nextLabel = 1;
 
 
-	private static void emit(String line )
+	private static void emit(String line)
 	{
 		System.out.println(line);
     }
@@ -629,7 +629,7 @@ public static void main( String args[] ) throws IOException
 		}
     }
 
-    public void generateJump(Object[] exr, int labelTrue, int labelFalse )
+    public void generateJump(Object[] exr, int labelTrue, int labelFalse)
 	{
 		switch((String)exr[0])
 		{

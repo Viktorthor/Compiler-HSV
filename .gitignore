@@ -1,5 +1,5 @@
-.NanoMorphoLexer.class
-.NanoMorphoLexer.java
-.NanoMorphoLexer.java~
-.NanoMorphoParser.class
-.NanoMorphoParser.java
+.Lexer.class
+.Lexer.java
+.Lexer.java~
+.Parser.class
+.Parser.java
