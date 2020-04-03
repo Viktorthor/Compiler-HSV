@@ -1,7 +1,7 @@
 test()
 {
 	var a,b;
-	a = 2+3+4;
+	a = 5;
 	b = "asd";
 	
 	if(a == 5) {
