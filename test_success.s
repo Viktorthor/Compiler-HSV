@@ -1,12 +1,12 @@
-;;; Bunch of tests that were obtained from the morpho workbench
-;;; Note : since this is nanoMorpho some things had to be modified to work here
+// Bunch of tests that were obtained from the morpho workbench
+// Note : since this is nanoMorpho some things had to be modified to work here
 
-;;; TESTS :
-;;; - variable assignment (in different orders)
-;;; - printing out string variables
-;;; - changing the value of an already assigned variable
-;;; - String concatenation of strings and string variables
-string_Tests()
+// TESTS :
+// - variable assignment (in different orders)
+// - printing out string variables
+// - changing the value of an already assigned variable
+// - String concatenation of strings and string variables
+stringTests()
 {
 	var x,y;
 	y = " Hi Back at you";
@@ -20,12 +20,12 @@ string_Tests()
 	newLine();
 }
 
-;;; TESTS :
-;;; - variable assignment
-;;; - Adding integers and variables
-;;; - concatenation of string and integers
-;;; - floating point math
-math_Tests()
+// TESTS :
+// - variable assignment
+// - Adding integers and variables
+// - concatenation of string and integers
+// - floating point math
+mathTests()
 {
 	var a,b,c;
 	a = 1;
@@ -38,14 +38,14 @@ math_Tests()
 	newLine();
 }
 
-;;; TESTS :
-;;; - variable assignment
-;;; - creating list with integers and null
-;;; - creating list with integers
-;;; - creating list with strings
-;;; - creating list from from variable values
-;;; - creating list from functions that return values
-list_Tests()
+// TESTS :
+// - variable assignment
+// - creating list with integers and null
+// - creating list with integers
+// - creating list with strings
+// - creating list from from variable values
+// - creating list from functions that return values
+listTests()
 {
 	var x,y,z,m;
 	y = 1;
@@ -68,13 +68,13 @@ list_Tests()
 	newLine();
 }
 
-;;; TESTS :
-;;; - reciving and using arguments
-;;; - condional flows
-;;; - body expressions inside IF statements
-conditional_Tests(first,second)
+// TESTS :
+// - reciving and using arguments
+// - condional flows
+// - body expressions inside IF statements
+conditionalTests(first,second)
 {
-	writeln("conditional_Tests called with first="++first++" second="++ second);
+	writeln("conditionalTests called with first="++first++" second="++ second);
 	if(first)
 	{
 		if(second)
@@ -97,7 +97,7 @@ conditional_Tests(first,second)
 		};
 	};
 
-	;;; Tests IF(expressions) and elsif(expressions)
+	// Tests IF(expressions) and elsif(expressions)
 	if(first == true && second == false){
 		writeln("reached when first is true and second is false");
 	}
@@ -112,10 +112,10 @@ conditional_Tests(first,second)
 	newLine();
 }
 
-;;; TESTS :
-;;; - only having if no else
-;;; - having if and elsif's but no else
-edgecase_conditional_Tests(first)
+// TESTS :
+// - only having if no else
+// - having if and elsif's but no else
+edgecaseconditionalTests(first)
 {
 	if(first)
 	{
@@ -133,7 +133,7 @@ edgecase_conditional_Tests(first)
 
 }
 
-;;; fibo and f are from test.nm from nanomorphoparser.zip in ugla 
+// fibo and f are from test.nm from Parser.zip in ugla 
 fibo(n)
 {
 	var i,f1,f2,tmp;
@@ -171,15 +171,15 @@ newLine()
 main()
 {
 	
-	string_Tests();
-	math_Tests();
-	list_Tests();
-	conditional_Tests(true,true);
-	conditional_Tests(true,false);
-	conditional_Tests(false,true);
-	conditional_Tests(false,false);
-	edgecase_conditional_Tests(true);
-	edgecase_conditional_Tests(false);
+	stringTests();
+	mathTests();
+	listTests();
+	conditionalTests(true,true);
+	conditionalTests(true,false);
+	conditionalTests(false,true);
+	conditionalTests(false,false);
+	edgecaseconditionalTests(true);
+	edgecaseconditionalTests(false);
 	writeln("non-recursive fibo(35)="++fibo(35));
 	writeln("recursive fibo(35)="++f(35));
 }
