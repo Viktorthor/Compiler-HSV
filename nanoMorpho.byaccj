@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *         Högni Freyr Gunnarsson, Son Van Nguyen, Viktor Þór Freysson     *
- * 				hfg7@hi.is          svn5@hi.is          vthf1@hi.is        *
+ * 				hfg7@hi.is          svn5@hi.is          vthf1@hi.is              *
  *                         Homework 4                                      *
  *                                                                         *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -29,7 +29,7 @@
 %%
 
 startCompiler
-	: 
+	:
 		program {
 			generateProgram(name, ((Vector<Object>)($1)).toArray());
 		}
@@ -220,8 +220,7 @@ public static void main(String args[]) throws IOException
 /* Program generator starts here */
 /* ***************************** */
 
-    private static int nextLabel = 1;
-
+  private static int nextLabel = 1;
 
 	private static void emit(String s)
 	{
@@ -300,7 +299,7 @@ public static void main(String args[]) throws IOException
               case "IF":
                 int labElse = newLabel();
                 int labEnd = newLabel();
-                generateJump(((Object[])(((Object[])exp)[1])),0,labElse);
+                generateJumper(((Object[])(((Object[])exp)[1])),0,labElse);
                 generateExpr(((Object[])(((Object[])exp)[2])));
                 emit("(Go _"+labEnd+")");
                 emit("_"+labElse+":");
@@ -315,7 +314,7 @@ public static void main(String args[]) throws IOException
                 int labTrue = newLabel();
                 int labFalse = newLabel();
                 emit("_"+labTrue+":");
-                generateJump(((Object[])(((Object[])exp)[1])),0,labFalse);
+                generateJumper(((Object[])(((Object[])exp)[1])),0,labFalse);
                 generateExpr(((Object[])(((Object[])exp)[2])));
                 emit("(Go _"+labTrue+")");
                 emit("_"+labFalse+":");
@@ -334,6 +333,32 @@ public static void main(String args[]) throws IOException
                 throw new Error("Unknown intermediate code type: \""+(String)((Object[])exp)[0]+"\"");
            }
     }
+
+		 public void generateJumper(Object[] exr, int lTrue, int lFalse)
+		 {
+				switch((String)exr[0])
+				{
+		            case "LITERAL":
+		                String literal = (String)exr[1];
+		                if(literal.equals("null") || literal.equals("false"))
+		                {
+		                    if( lFalse!=0 )
+												{
+													 emit("(Go _"+lFalse+")");
+												}
+		                    return;
+		                }
+										if(lTrue!=0)
+										{
+											 emit("(Go _"+lTrue+")");
+										}
+		                return;
+		      default:
+					generateExpr(exr);
+					if( lTrue!=0 ) emit("(GoTrue _"+lTrue+")");
+					if( lFalse!=0 ) emit("(GoFalse _"+lFalse+")");
+				}
+			}
 
     public void generateExprP(Object[] exp)
     {
@@ -362,23 +387,3 @@ public static void main(String args[]) throws IOException
                 throw new Error("Unknown intermediate code type: \""+(String)((Object[])exp)[0]+"\"");
 		}
     }
-
-    public void generateJump(Object[] exr, int labelTrue, int labelFalse)
-	{
-		switch((String)exr[0])
-		{
-            case "LITERAL":
-                String literal = (String)exr[1];
-                if(literal.equals("false") || literal.equals("null"))
-                {
-                    if( labelFalse!=0 ) emit("(Go _"+labelFalse+")");
-                    return;
-                }
-                if( labelTrue!=0 ) emit("(Go _"+labelTrue+")");
-                return;
-        default:
-			generateExpr(exr);
-			if( labelTrue!=0 ) emit("(GoTrue _"+labelTrue+")");
-			if( labelFalse!=0 ) emit("(GoFalse _"+labelFalse+")");
-		}
-	}
