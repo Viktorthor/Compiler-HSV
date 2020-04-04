@@ -71,7 +71,7 @@ _NAME=([:letter:]|{_DIGIT})+
 {_NAME} {
 	yyparser.yylval = new ParserVal(yytext());
 	return Parser.NAME;
-}
+}	
 
 [\+\-*/!%&=><\:\^\~&|?]+ {
 	yyparser.yylval = new ParserVal(yytext());
