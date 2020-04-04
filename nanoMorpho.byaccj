@@ -1,6 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *         Högni Freyr Gunnarsson, Son Van Nguyen, Viktor Þór Freysson     *
- * 				hfg7@hi.is          svn5@hi.is          vthf1@hi.is              *
+ * 				hfg7@hi.is          svn5@hi.is          vthf1@hi.is        *
  *                         Homework 4                                      *
  *                                                                         *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -13,8 +13,8 @@
 
 %token <sval> LITERAL,NAME,OP1,OP2,OP3,OP4,OP5,OP6,OP7
 %token VAR,IF,ELSIF,ELSE,WHILE,RETURN,OPNAME
-%type <obj> program, function, exprs, exp, binopexp, smallexp, commasepExp, elseiforelse, elseifsent, elsesent, notexp
-%type <ival> argsfun
+%type <obj> program, function, expr, exp, binopexpr, smallexpr, commasepExp, elseiforelse, elseifsent, elsesent, notexpr
+%type <ival> nameloop
 %type <sval> op
 %right RETURN '='
 %left OP1
@@ -28,131 +28,187 @@
 
 %%
 
-startCompiler
-	:
+/***********************************************************
+* 					  NanoMorpho Syntax         		   *
+************************************************************/ 
+startOfNanoMorpho
+	: 
 		program {
+			// Start our code generation. This methhod also adds the prologue and epilogue.
 			generateProgram(name, ((Vector<Object>)($1)).toArray());
 		}
 	;
 
-/* Vector in case of multiple functions, adds functions there to be returned later /*
-/* In case of single function, return */
 program
-	:  program function 	{ ((Vector<Object>)($1)).add($2); $$=$1; }
-	|  function { $$=new Vector<Object>(); ((Vector<Object>)($$)).add($1); }
+	:  
+		// If there are more functions, add them up in a vector.
+		program function { 
+			((Vector<Object>)($1)).add($2); 
+			$$=$1; 
+		}
+	|	function { 
+			$$=new Vector<Object>(); 
+			((Vector<Object>)($$)).add($1); 
+		}
 	;
-
 
 function
 	:
 		{
-			varAmount = 0;
+			varAmount = 0; // We need to count the amount of decl to know how many times to push.
 			varTable = new HashMap<String,Integer>();
 		}
-		NAME '(' argsfun ')'
+		NAME '(' nameloop ')'
 		'{'
-			variables
-			exprs
-		'}' { $$ = new Object[]{$2, $4, varAmount, ((Vector<Object>)($8)).toArray()}; }
+			decl
+			expr
+		'}' 
+		{ 
+			$$ = new Object[]{$2, $4, varAmount, ((Vector<Object>)($8)).toArray()}; 
+		}
 	;
 
-/* Holds onto and counts the amount of arguments */
-argsfun
-	: /* empty */ 			{ $$ = 0; }
-	| argsfun ',' NAME 	{ addVar($3); $$ = $1 + 1; }
-	| NAME					{ addVar($1); $$ = 1; }
+// nameloops are function arguments and variable declerations like "a,b,c...".
+nameloop
+	// No arguments
+	: 	{ $$ = 0; }
+	// More than 1 arguments	
+	| 	nameloop ',' NAME
+		{ 
+			addVar($3); 
+			$$ = $1 + 1;
+		}
+	// 1 argument
+	| 	NAME
+		{ 
+			addVar($1);
+			$$ = 1; 
+		}
 	;
 
-/* Counts the number of variables we have */
-variables
-	: /* empty */
-	| VAR argsfun ';'
+decl
+	: 	VAR nameloop ';'
 	;
 
-/* Expressions ..  */
-exprs
-	: exprs  exp ';'	 		{ ((Vector<Object>)($1)).add($2); $$=$1; }
-	| exp ';'					  { $$ = new Vector<Object>(); ((Vector<Object>)($$)).add($1); }
+/* expr from the NanoMorpho syntax diagram in markmid.pdf is 
+   here split into expr, exp, notexpr, binopexpr and smallexpr: */
+expr
+	: 	expr exp ';'	 		
+		{ 
+			((Vector<Object>)($1)).add($2); 
+			$$=$1;
+		}
+	| 	exp ';'	
+		{ 
+			$$ = new Vector<Object>(); 
+			((Vector<Object>)($$)).add($1); 
+		}
 	;
 
-/* Expressions, similar to JFlex file */
 exp
-  : RETURN exp				{ $$ = new Object[]{"RETURN", $2}; }
-  | NAME '=' exp			{ $$ = new Object[]{"STORE", findVar($1), $3}; }
-  | notexp     				{ $$ = $1; }
-  ;
-
-/* If we have a binary operation expression with/without a "!" prefix */
-notexp
-  : '!' notexp   { $$ = new Object[]{"CALL", "!", new Object[]{$2} }; }
-  | binopexp     { $$ = $1; }
-
-/* 8 levels of priority for binary operations */
-binopexp
-	: binopexp OP1 binopexp	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
-	| binopexp OP2 binopexp	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
-	| binopexp OP3 binopexp	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
-	| binopexp OP4 binopexp	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
-	| binopexp OP5 binopexp	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
-	| binopexp OP6 binopexp	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
-	| binopexp OP7 smallexp	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
-	| op smallexp %prec UNOP{ $$ = new Object[]{"CALL", $1 , new Object[]{$2}}; }
-	| smallexp					    { $$ = $1; }
+	: 	RETURN exp				
+		{ $$ = new Object[]{"RETURN", $2}; }
+	| 	NAME '=' exp
+		{ $$ = new Object[]{"STORE", findVar($1), $3}; }
+	| 	notexpr
+		{ $$ = $1; }
 	;
 
-smallexp
-	: NAME '(' commasepExp ')' { $$ = new Object[]{"CALL", $1, ((Vector<Object>)($3)).toArray()}; }
-	| NAME 						{ $$ = new Object[]{"FETCH", findVar($1)}; }
-	| LITERAL					{ $$ = new Object[]{"LITERAL", $1}; }
-	| '(' exp ')'				{ $$ = $2; }
-	| WHILE '(' exp ')'
-	  '{'
-		  exprs
-	  '}' 						{ $$ = new Object[]{"WHILE", $3, new Object[]{"BODY", ((Vector<Object>)($6)).toArray()}}; }
-	| IF '(' exp ')'
-	  '{'
-	  	 exprs
-	  '}'
-	  elseiforelse				{ $$ = new Object[]{"IF", $3, new Object[]{"BODY", ((Vector<Object>)($6)).toArray()}, $8}; }
+notexpr
+	:	'!' notexpr
+		{ $$ = new Object[]{"CALL", "!", new Object[]{$2} }; }
+	|	binopexpr     
+		{ $$ = $1; }
+	;
+	
+/*  The levels of priority for binary operations */
+binopexpr
+	: 	binopexpr OP1 binopexpr	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
+	| 	binopexpr OP2 binopexpr	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
+	| 	binopexpr OP3 binopexpr	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
+	| 	binopexpr OP4 binopexpr	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
+	| 	binopexpr OP5 binopexpr	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
+	| 	binopexpr OP6 binopexpr	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
+	| 	binopexpr OP7 smallexpr	{ $$ = new Object[]{"CALL", $2 ,new Object[]{$1, $3}};}
+	| 	op smallexpr %prec UNOP{ $$ = new Object[]{"CALL", $1 , new Object[]{$2}}; }
+	| 	smallexpr { $$ = $1; }
+	;
+
+smallexpr
+	: 	NAME '(' commasepExp ')' 
+		{ $$ = new Object[]{"CALL", $1, ((Vector<Object>)($3)).toArray()}; }
+	| 	NAME 						
+		{ $$ = new Object[]{"FETCH", findVar($1)}; }
+	| 	LITERAL					
+		{ $$ = new Object[]{"LITERAL", $1}; }
+	| 	'(' exp ')'				{ $$ = $2; }
+	| 	WHILE '(' exp ')'
+		'{'
+			expr
+		'}'
+		{ $$ = new Object[]{"WHILE", $3, new Object[]{"BODY", ((Vector<Object>)($6)).toArray()}}; }
+	| 	IF '(' exp ')'
+		'{'
+			expr
+		'}'
+		elseiforelse			
+		{ $$ = new Object[]{"IF", $3, new Object[]{"BODY", ((Vector<Object>)($6)).toArray()}, $8}; }
 	;
 
 elseiforelse
-	: /* empty */				{ $$ = null; }
-	| elseifsent				{ $$ = $1; }
-	| elsesent					{ $$ = $1; }
+	: 	// empty
+		{ $$ = null; }
+	| 	elseifsent
+		{ $$ = $1; }
+	|	elsesent
+		{ $$ = $1; }
 	;
 
 elseifsent
-	: ELSIF '(' exp ')'
-	  '{'
-		 exprs
-	  '}'
-	  elseifsent 				{ $$ = new Object[]{"IF", $3, new Object[]{"BODY", ((Vector<Object>)($6)).toArray()}, $8}; }
-	| ELSIF '(' exp ')'
-	  '{'
-		 exprs
-	  '}'
-	  elsesent 					{ $$ = new Object[]{"IF", $3, new Object[]{"BODY", ((Vector<Object>)($6)).toArray()}, $8}; }
-	| ELSIF '(' exp ')'
-	  '{'
-		 exprs
-	  '}'						{ $$ = new Object[]{"IF", $3, new Object[]{"BODY", ((Vector<Object>)($6)).toArray()}, null}; }
+	:	ELSIF '(' exp ')'
+		'{'
+			expr
+		'}'
+		elseifsent
+		{ $$ = new Object[]{"IF", $3, new Object[]{"BODY", ((Vector<Object>)($6)).toArray()}, $8}; }
+	| 	ELSIF '(' exp ')'
+		'{'
+			expr
+		'}'
+		elsesent 					
+		{ $$ = new Object[]{"IF", $3, new Object[]{"BODY", ((Vector<Object>)($6)).toArray()}, $8}; }
+	| 	ELSIF '(' exp ')'
+		'{'
+			expr
+		'}'	
+		{ $$ = new Object[]{"IF", $3, new Object[]{"BODY", ((Vector<Object>)($6)).toArray()}, null}; }
 	;
 
 elsesent
-	: ELSE
-	  '{'
-         exprs
-	  '}'						{ $$ = new Object[]{"IF", new Object[]{"LITERAL", "true"}, new Object[]{"BODY", ((Vector<Object>)($3)).toArray()}, null};}
+	: 	ELSE
+		'{'
+			expr
+		'}'
+		{ $$ = new Object[]{"IF", new Object[]{"LITERAL", "true"}, new Object[]{"BODY", ((Vector<Object>)($3)).toArray()}, null};}
 	;
 
 commasepExp
-	: /* empty */ 				    { $$ = new Vector<Object>(); }
-	| commasepExp ',' exp		{ ((Vector<Object>)($1)).add($3); $$=$1; }
-	| exp						        { $$ = new Vector<Object>(); ((Vector<Object>)($$)).add($1); }
+	:	// empty 				    
+		{ $$ = new Vector<Object>(); }
+	| 	commasepExp ',' exp		
+		{ 
+			((Vector<Object>)($1)).add($3);
+			$$=$1; 
+		}
+	| 	exp						        
+		{ 
+			$$ = new Vector<Object>(); 
+			((Vector<Object>)($$)).add($1); 
+		}
 	;
 
-op	:	OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 ;
+op
+	:	OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7;
 
 %%
 
@@ -209,181 +265,181 @@ public Parser(Reader r)
 	lexer = new Lexer(r, this);
 }
 
-public static void main(String args[]) throws IOException
+public static void main(String nameloop[]) throws IOException
 {
-	Parser yyparser = new Parser(new FileReader(args[0]));
-	name = args[0].substring(0,args[0].lastIndexOf('.'));
+	Parser yyparser = new Parser(new FileReader(nameloop[0]));
+	name = nameloop[0].substring(0,nameloop[0].lastIndexOf('.'));
 	yyparser.yyparse();
 }
 
-/* ***************************** */
-/* Program generator starts here */
-/* ***************************** */
+/******************************************************
+ *				Code generation starts here 	      *
+ ******************************************************/
 
-  private static int nextLabel = 1;
+private static int nextLabel = 1;
 
-	private static void emit(String s)
+private static void emit(String s)
+{
+	System.out.println(s);
+}
+
+public static int newLabel()
+{
+	return nextLabel++;
+}
+
+public void generateProgram(String filename, Object[] funs)
+{
+	emit("\"" +filename+ ".mexe\" = main in\n!\n{{");
+	for( Object f: funs )
 	{
-		System.out.println(s);
-    }
+		generateFunction((Object[])f);
+	}
+	emit("}}\n*\nBASIS;");
+}
 
-	public static int newLabel()
+public void generateFunction(Object[] f)
+{
+	String funcName = (String)f[0];
+	int argCount = (Integer)f[1];
+	int varAmount = (Integer)f[2];
+
+	emit("#\""+funcName+"[f"+argCount+"]\" =\n[");
+
+	if(varAmount > 0 )
 	{
-		return nextLabel++;
-    }
+		emit("(MakeVal null)");
+		for(int i = 0; i < varAmount; i++)
+		{
+			emit("(Push)");
+		}
+	}
 
-    public void generateProgram(String filename, Object[] funs)
-    {
-		emit("\"" +filename+ ".mexe\" = main in\n!\n{{");
-        for( Object f: funs )
-        {
-            generateFunction((Object[])f);
-        }
-		emit("}}\n*\nBASIS;");
-    }
+	for (Object exp : (Object[])f[3])
+	{
+	   generateExpr((Object[])exp);
+	}
+	emit("(Return)\n];");
+}
 
-    public void generateFunction(Object[] f)
-    {
-        String funcName = (String)f[0];
-        int argCount = (Integer)f[1];
-        int varAmount = (Integer)f[2];
-
-        emit("#\""+funcName+"[f"+argCount+"]\" =\n[");
-
-        if(varAmount > 0 )
-        {
-            emit("(MakeVal null)");
-            for(int i = 0; i < varAmount; i++)
-            {
-                emit("(Push)");
-            }
-        }
-
-        for (Object exp : (Object[])f[3])
-        {
-           generateExpr((Object[])exp);
-        }
-        emit("(Return)\n];");
-    }
-
-    public void generateExpr(Object[] exp)
-    {
-           switch ((String)((Object[])exp)[0])
-           {
-              case "RETURN":
-                generateExprP((Object[])((Object[])exp)[1]);
-                emit("(Return)");
-                break;
-              case "CALL":
-                Object[] args = (Object[])((Object[])exp)[2];
-                int i;
-                for(i=0; i != args.length; i++)
-                {
-                    if(i==0)
-                    {
-                        generateExpr((Object[])args[i]);
-                    }
-                    else
-                    {
-                        generateExprP((Object[])args[i]);
-                    }
-                }
-                emit("(Call #\""+(String)((Object[])exp)[1]+"[f"+i+"]\" "+i+")");
-                break;
-              case "FETCH":
-                emit("(Fetch "+(int)((Object[])exp)[1]+")");
-                break;
-              case "LITERAL":
-                emit("(MakeVal "+(String)((Object[])exp)[1]+")");
-                break;
-              case "IF":
-                int labElse = newLabel();
-                int labEnd = newLabel();
-                generateJumper(((Object[])(((Object[])exp)[1])),0,labElse);
-                generateExpr(((Object[])(((Object[])exp)[2])));
-                emit("(Go _"+labEnd+")");
-                emit("_"+labElse+":");
-
-                if(((Object[])(((Object[])exp)[3])) != null)
-                {
-                    generateExpr(((Object[])(((Object[])exp)[3])));
-                }
-                emit("_"+labEnd+":");
-                break;
-              case "WHILE":
-                int labTrue = newLabel();
-                int labFalse = newLabel();
-                emit("_"+labTrue+":");
-                generateJumper(((Object[])(((Object[])exp)[1])),0,labFalse);
-                generateExpr(((Object[])(((Object[])exp)[2])));
-                emit("(Go _"+labTrue+")");
-                emit("_"+labFalse+":");
-                break;
-              case "STORE":
-                generateExpr((Object[])((Object[])exp)[2]);
-                emit("(Store "+(int)((Object[])exp)[1]+")");
-                break;
-              case "BODY":
-                for (Object b_expr : (Object[])exp[1])
-                {
-                    generateExpr((Object[])b_expr);
-                }
-                break;
-              default:
-                throw new Error("Unknown intermediate code type: \""+(String)((Object[])exp)[0]+"\"");
-           }
-    }
-
-		 public void generateJumper(Object[] exr, int lTrue, int lFalse)
-		 {
-				switch((String)exr[0])
+public void generateExpr(Object[] exp)
+{
+	switch ((String)((Object[])exp)[0])
+	{
+		case "RETURN":
+			generateExprP((Object[])((Object[])exp)[1]);
+			emit("(Return)");
+			break;
+		case "CALL":
+			Object[] args = (Object[])((Object[])exp)[2];
+			int i;
+			for(i=0; i != args.length; i++)
+			{
+				if(i==0)
 				{
-		            case "LITERAL":
-		                String literal = (String)exr[1];
-		                if(literal.equals("null") || literal.equals("false"))
-		                {
-		                    if( lFalse!=0 )
-												{
-													 emit("(Go _"+lFalse+")");
-												}
-		                    return;
-		                }
-										if(lTrue!=0)
-										{
-											 emit("(Go _"+lTrue+")");
-										}
-		                return;
-		      default:
-					generateExpr(exr);
-					if( lTrue!=0 ) emit("(GoTrue _"+lTrue+")");
-					if( lFalse!=0 ) emit("(GoFalse _"+lFalse+")");
+					generateExpr((Object[])args[i]);
+				}
+				else
+				{
+					generateExprP((Object[])args[i]);
 				}
 			}
+			emit("(Call #\""+(String)((Object[])exp)[1]+"[f"+i+"]\" "+i+")");
+			break;
+		case "FETCH":
+			emit("(Fetch "+(int)((Object[])exp)[1]+")");
+			break;
+		case "LITERAL":
+			emit("(MakeVal "+(String)((Object[])exp)[1]+")");
+			break;
+		case "IF":
+			int labElse = newLabel();
+			int labEnd = newLabel();
+			generateJumper(((Object[])(((Object[])exp)[1])),0,labElse);
+			generateExpr(((Object[])(((Object[])exp)[2])));
+			emit("(Go _"+labEnd+")");
+			emit("_"+labElse+":");
 
-    public void generateExprP(Object[] exp)
-    {
-        switch ((String)((Object[])exp)[0])
-        {
-            case "CALL":
-                Object[] args = (Object[])((Object[])exp)[2];
-                int i;
-                for(i=0; i != args.length; i++)
-                {
-                    generateExprP((Object[])args[i]);
-                }
-                if( i==0 )
-                {
-                    emit("(Push)");
-                }
-                emit("(Call #\""+(String)((Object[])exp)[1]+"[f"+i+"]\" "+i+")");
-                break;
-            case "FETCH":
-                emit("(FetchP "+(int)((Object[])exp)[1]+")");
-                break;
-            case "LITERAL":
-                emit("(MakeValP "+(String)((Object[])exp)[1]+")");
-                break;
-            default:
-                throw new Error("Unknown intermediate code type: \""+(String)((Object[])exp)[0]+"\"");
-		}
-    }
+			if(((Object[])(((Object[])exp)[3])) != null)
+			{
+				generateExpr(((Object[])(((Object[])exp)[3])));
+			}
+			emit("_"+labEnd+":");
+			break;
+		case "WHILE":
+			int labTrue = newLabel();
+			int labFalse = newLabel();
+			emit("_"+labTrue+":");
+			generateJumper(((Object[])(((Object[])exp)[1])),0,labFalse);
+			generateExpr(((Object[])(((Object[])exp)[2])));
+			emit("(Go _"+labTrue+")");
+			emit("_"+labFalse+":");
+			break;
+		case "STORE":
+			generateExpr((Object[])((Object[])exp)[2]);
+			emit("(Store "+(int)((Object[])exp)[1]+")");
+			break;
+		case "BODY":
+			for (Object b_expr : (Object[])exp[1])
+			{
+				generateExpr((Object[])b_expr);
+			}
+			break;
+		default:
+			throw new Error("Unknown intermediate code type: \""+(String)((Object[])exp)[0]+"\"");
+	   }
+}
+
+public void generateJumper(Object[] exr, int lTrue, int lFalse)
+{
+	switch((String)exr[0])
+	{
+		case "LITERAL":
+			String literal = (String)exr[1];
+			if(literal.equals("null") || literal.equals("false"))
+			{
+				if( lFalse!=0 )
+				{
+					emit("(Go _"+lFalse+")");
+				}
+				return;
+			}
+			if(lTrue!=0)
+			{
+				emit("(Go _"+lTrue+")");
+			}
+			return;
+		default:
+			generateExpr(exr);
+			if( lTrue!=0 ) emit("(GoTrue _"+lTrue+")");
+			if( lFalse!=0 ) emit("(GoFalse _"+lFalse+")");
+	}
+}
+
+public void generateExprP(Object[] exp)
+{
+	switch ((String)((Object[])exp)[0])
+	{
+		case "CALL":
+			Object[] args = (Object[])((Object[])exp)[2];
+			int i;
+			for(i=0; i != args.length; i++)
+			{
+				generateExprP((Object[])args[i]);
+			}
+			if( i==0 )
+			{
+				emit("(Push)");
+			}
+			emit("(Call #\""+(String)((Object[])exp)[1]+"[f"+i+"]\" "+i+")");
+			break;
+		case "FETCH":
+			emit("(FetchP "+(int)((Object[])exp)[1]+")");
+			break;
+		case "LITERAL":
+			emit("(MakeValP "+(String)((Object[])exp)[1]+")");
+			break;
+		default:
+			throw new Error("Unknown intermediate code type: \""+(String)((Object[])exp)[0]+"\"");
+	}
+}
